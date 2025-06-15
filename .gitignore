@@ -1,0 +1,6 @@
+/data/*
+!/data/.keep        # Leave a placeholder if needed
+*.db
+*.sqlite
+*.log
+.env
