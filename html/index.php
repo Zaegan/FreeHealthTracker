@@ -167,8 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
             $safe_key = strtolower(str_replace([' ', '-'], '_', $group));
             echo "<div class='muscle-group'>";
             echo "<h3>$group</h3>";
-            $actual_group = explode(' - ', $group)[1]; // isolates "chest"
-            echo "<label>Exercise: <select name='{$safe_key}_exercise' onchange=\"fetchSuggestion(this, '$actual_group')\">";
+            echo "<label>Exercise: <select name='{$safe_key}_exercise' onchange=\"fetchSuggestion(this, '$group')\">";
             echo "<option value=''>-- Select --</option>";
             foreach ($exercises as $exercise) echo "<option>$exercise</option>";
             echo "</select></label>";
@@ -262,9 +261,8 @@ function prepopulateFields() {
                     }
 
                     // Also trigger POST suggestion to display guidance
-                    const labelText = select.closest('.muscle-group').querySelector('h3')?.textContent;
-                    const actualGroup = labelText?.split(' - ')[1] ?? '';
-                    fetchSuggestion(select, actualGroup);
+                    const fullGroup = select.closest('.muscle-group').querySelector('h3')?.textContent ?? '';
+                    fetchSuggestion(select, fullGroup);
 
                 }
 

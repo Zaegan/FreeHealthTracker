@@ -69,7 +69,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $group = $_POST['muscle_group'] ?? '';
 
     if ($exercise && $group) {
-        $stmt = $workout_db->prepare("SELECT weight, reps1, reps2, reps3 FROM workouts WHERE exercise = ? AND muscle_group = ? ORDER BY date DESC LIMIT 1");
+        // muscle_group is expected to be in the "Category - Name" format, which
+        // matches how workout entries are stored.
+        $stmt = $workout_db->prepare(
+            "SELECT weight, reps1, reps2, reps3 FROM workouts " .
+            "WHERE exercise = ? AND muscle_group = ? ORDER BY date DESC LIMIT 1"
+        );
         $stmt->execute([$exercise, $group]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
