@@ -4,3 +4,4 @@
 *.sqlite
 *.log
 .env
+index_backup.php
