@@ -3,6 +3,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 session_start();
+$data_dir = realpath(__DIR__ . '/../data');
 
 // Redirect if already logged in
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
@@ -11,7 +12,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
 }
 
 // Connect to credentials database
-$path = '/var/www/html/data/user_credentials.db';
+$path = "$data_dir/user_credentials.db";
 $db = new PDO("sqlite:$path");
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 

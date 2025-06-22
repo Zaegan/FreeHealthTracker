@@ -14,8 +14,10 @@ if ($argc !== 3) {
 $username = $argv[1];
 $plaintext = $argv[2];
 
+$data_dir = realpath(__DIR__ . '/../data');
+
 // Connect to the database
-$path = '/var/www/html/data/user_credentials.db';
+$path = "$data_dir/user_credentials.db";
 $db = new PDO("sqlite:$path");
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 

@@ -6,10 +6,11 @@ if (!isset($_SESSION['logged_in'])) {
     exit();
 }
 
+$data_dir = realpath(__DIR__ . '/../data');
 $raw_username = $_SESSION['username'] ?? 'default';
 // Sanitize username for filesystem usage
 $username = preg_replace('/[^a-zA-Z0-9_-]/', '', $raw_username);
-$db = new PDO("sqlite:/var/www/html/data/{$username}_weight_log.db");
+$db = new PDO("sqlite:$data_dir/{$username}_weight_log.db");
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $db->exec("CREATE TABLE IF NOT EXISTS weights (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, weight REAL)");
 $db->exec("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)");

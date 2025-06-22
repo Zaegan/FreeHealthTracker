@@ -19,7 +19,7 @@ Implements a login form and verifies credentials against a SQLite database (user
 
 session_start();
 // Connect to user credentials database
-$credentials_db = new PDO('sqlite:/var/www/html/data/user_credentials.db');
+$credentials_db = new PDO('sqlite:' . __DIR__ . '/data/user_credentials.db');
 ...
 if (!isset($_SESSION['logged_in'])) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['username'], $_POST['password'])) {
@@ -45,7 +45,7 @@ Handles CSV import/export of body weight data, allows setting goal trajectories,
 
 Example of CSV import/export logic and storage:
 
-$db = new PDO("sqlite:/var/www/html/data/{$username}_weight_log.db");
+$db = new PDO("sqlite:" . __DIR__ . "/data/{$username}_weight_log.db");
 ...
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
     if (is_uploaded_file($_FILES['csv_file']['tmp_name'])) {
@@ -92,7 +92,7 @@ Logout (logout.php):
 Destroys the session and redirects back to the login page.
 
 General Notes
-Databases: Each user has separate databases for workouts and weight logs. These files are placed in the /var/www/html/data/ directory and are named using the username as a prefix.
+Databases: Each user has separate databases for workouts and weight logs. These files are placed outside the web root (e.g. /var/www/data/) and are named using the username as a prefix.
 
 Data Directory: The repo contains a data/placeholder.txt to keep the folder in version control, but real .db files are generated at runtime.
 
