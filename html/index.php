@@ -125,7 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
         $reps2 = $_POST["{$safe_key}_reps2"] ?? null;
         $reps3 = $_POST["{$safe_key}_reps3"] ?? null;
 
-        if ($exercise) {
+        $has_reps = ($reps1 !== null && $reps1 !== '') || ($reps2 !== null && $reps2 !== '') || ($reps3 !== null && $reps3 !== '');
+        if ($exercise && $has_reps) {
             $stmt = $db->prepare("INSERT INTO workouts (date, user, muscle_group, exercise, weight, reps1, reps2, reps3) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([$date, $user, $group, $exercise, $weight, $reps1, $reps2, $reps3]);
         }
@@ -166,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
         foreach ($workout_exercises as $group => $exercises) {
             $safe_key = strtolower(str_replace([' ', '-'], '_', $group));
             $escaped_group = htmlspecialchars($group, ENT_QUOTES);
-            $group_js = json_encode($group);
+            $group_js = htmlspecialchars(json_encode($group), ENT_QUOTES);
             echo "<div class='muscle-group'>";
             echo "<h3>{$escaped_group}</h3>";
             echo "<label>Exercise: <select name='{$safe_key}_exercise' onchange=\"fetchSuggestion(this, {$group_js})\">";
