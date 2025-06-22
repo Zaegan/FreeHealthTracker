@@ -165,9 +165,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
         <?php
         foreach ($workout_exercises as $group => $exercises) {
             $safe_key = strtolower(str_replace([' ', '-'], '_', $group));
+            $escaped_group = htmlspecialchars($group, ENT_QUOTES);
+            $group_js = json_encode($group);
             echo "<div class='muscle-group'>";
-            echo "<h3>$group</h3>";
-            echo "<label>Exercise: <select name='{$safe_key}_exercise' onchange=\"fetchSuggestion(this, '$group')\">";
+            echo "<h3>{$escaped_group}</h3>";
+            echo "<label>Exercise: <select name='{$safe_key}_exercise' onchange=\"fetchSuggestion(this, {$group_js})\">";
             echo "<option value=''>-- Select --</option>";
             foreach ($exercises as $exercise) echo "<option>$exercise</option>";
             echo "</select></label>";
@@ -198,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['view_log'])) {
         foreach ($entries as $row) {
             echo "<div style='border:1px solid #ccc; padding:10px; margin:5px 0; border-radius:6px;'>";
             echo "<strong>Date:</strong> {$row['date']}<br>";
-            echo "<strong>Muscle Group:</strong> {$row['muscle_group']}<br>";
+            echo "<strong>Muscle Group:</strong> " . htmlspecialchars($row['muscle_group'], ENT_QUOTES) . "<br>";
             echo "<strong>Exercise:</strong> {$row['exercise']}<br>";
             echo "<strong>Weight:</strong> {$row['weight']} lbs<br>";
             echo "<strong>Reps:</strong> {$row['reps1']}, {$row['reps2']}, {$row['reps3']}";
