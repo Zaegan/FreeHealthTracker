@@ -6,8 +6,9 @@ session_start();
 
 // --- LOGIN SYSTEM WITH HASHED CREDENTIALS ---
 
+$data_dir = realpath(__DIR__ . '/../data');
 // Connect to user credentials database
-$credentials_db = new PDO('sqlite:/var/www/html/data/user_credentials.db');
+$credentials_db = new PDO("sqlite:$data_dir/user_credentials.db");
 $credentials_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 // Handle logout
@@ -67,7 +68,7 @@ if (!isset($_SESSION['logged_in'])) {
 $raw_username = $_SESSION['username'];
 // Sanitize username for filesystem usage
 $username = preg_replace('/[^a-zA-Z0-9_-]/', '', $raw_username);
-$workout_db_path = "/var/www/html/data/{$username}_workout_log.db";
+$workout_db_path = "$data_dir/{$username}_workout_log.db";
 $db = new PDO("sqlite:" . $workout_db_path);
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
@@ -85,7 +86,7 @@ $db->exec("CREATE TABLE IF NOT EXISTS workouts (
 )");
 
 // Load workout exercise definitions from config.db
-$config_db = new PDO("sqlite:/var/www/html/data/config.db");
+$config_db = new PDO("sqlite:$data_dir/config.db");
 $config_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 $workout_exercises = [];
@@ -100,7 +101,7 @@ while ($group = $group_stmt->fetch(PDO::FETCH_ASSOC)) {
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_weight'])) {
     $weight = floatval($_POST['bodyweight']);
-    $weight_db = new PDO("sqlite:/var/www/html/data/{$username}_weight_log.db");
+    $weight_db = new PDO("sqlite:$data_dir/{$username}_weight_log.db");
     $weight_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $weight_db->exec("CREATE TABLE IF NOT EXISTS weights (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

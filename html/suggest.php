@@ -1,15 +1,16 @@
 <?php
 session_start();
+$data_dir = realpath(__DIR__ . '/../data');
 $username = $_SESSION['username'] ?? null;
 if (!$username) {
     http_response_code(403);
     exit("Unauthorized");
 }
 
-$config_db = new PDO("sqlite:/var/www/html/data/config.db");
+$config_db = new PDO("sqlite:$data_dir/config.db");
 $config_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$workout_db = new PDO("sqlite:/var/www/html/data/{$username}_workout_log.db");
+$workout_db = new PDO("sqlite:$data_dir/{$username}_workout_log.db");
 $workout_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 // When loading the page, return a suggested exercise per group

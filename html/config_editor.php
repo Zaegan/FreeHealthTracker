@@ -5,8 +5,9 @@ if (php_sapi_name() !== 'cli') {
     exit("This script can only be run from the command line.\n");
 }
 
+$data_dir = realpath(__DIR__ . '/../data');
 // Connect to config DB
-$db = new PDO("sqlite:/var/www/html/data/config.db");
+$db = new PDO("sqlite:$data_dir/config.db");
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 // Create tables if not exist

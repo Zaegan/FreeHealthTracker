@@ -5,7 +5,8 @@ if (php_sapi_name() !== 'cli') {
     exit("This script can only be run from the command line.\n");
 }
 
-$path = '/var/www/html/data/user_credentials.db';
+$data_dir = realpath(__DIR__ . '/../data');
+$path = "$data_dir/user_credentials.db";
 
 try {
     $db = new PDO("sqlite:$path");
