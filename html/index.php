@@ -166,11 +166,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
         foreach ($workout_exercises as $group => $exercises) {
             $safe_key = strtolower(str_replace([' ', '-'], '_', $group));
             echo "<div class='muscle-group'>";
-            echo "<h3>$group</h3>";
+            $escaped_group = htmlspecialchars($group, ENT_QUOTES);
+            echo "<h3>{$escaped_group}</h3>";
             $actual_group = explode(' - ', $group)[1]; // isolates "chest"
-            echo "<label>Exercise: <select name='{$safe_key}_exercise' onchange=\"fetchSuggestion(this, '$actual_group')\">";
+            $onchange = "fetchSuggestion(this, " . json_encode($actual_group) . ")";
+            echo "<label>Exercise: <select name='{$safe_key}_exercise' onchange=\"" . htmlspecialchars($onchange, ENT_QUOTES) . "\">";
             echo "<option value=''>-- Select --</option>";
-            foreach ($exercises as $exercise) echo "<option>$exercise</option>";
+            foreach ($exercises as $exercise) echo "<option>" . htmlspecialchars($exercise, ENT_QUOTES) . "</option>";
             echo "</select></label>";
             echo "<p class='suggestion'></p>";
             echo "<label>Weight (lbs): <input type='number' name='{$safe_key}_weight'></label>";
@@ -198,11 +200,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['view_log'])) {
     } else {
         foreach ($entries as $row) {
             echo "<div style='border:1px solid #ccc; padding:10px; margin:5px 0; border-radius:6px;'>";
-            echo "<strong>Date:</strong> {$row['date']}<br>";
-            echo "<strong>Muscle Group:</strong> {$row['muscle_group']}<br>";
-            echo "<strong>Exercise:</strong> {$row['exercise']}<br>";
-            echo "<strong>Weight:</strong> {$row['weight']} lbs<br>";
-            echo "<strong>Reps:</strong> {$row['reps1']}, {$row['reps2']}, {$row['reps3']}";
+            echo "<strong>Date:</strong> " . htmlspecialchars($row['date'], ENT_QUOTES) . "<br>";
+            echo "<strong>Muscle Group:</strong> " . htmlspecialchars($row['muscle_group'], ENT_QUOTES) . "<br>";
+            echo "<strong>Exercise:</strong> " . htmlspecialchars($row['exercise'], ENT_QUOTES) . "<br>";
+            echo "<strong>Weight:</strong> " . htmlspecialchars($row['weight'], ENT_QUOTES) . " lbs<br>";
+            echo "<strong>Reps:</strong> " . htmlspecialchars($row['reps1'], ENT_QUOTES) . ", " . htmlspecialchars($row['reps2'], ENT_QUOTES) . ", " . htmlspecialchars($row['reps3'], ENT_QUOTES);
             echo "</div>";
         }
     }
