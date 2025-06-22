@@ -5,6 +5,16 @@ if (php_sapi_name() !== 'cli') {
     exit("This script can only be run from the command line.\n");
 }
 
+// Check for correct number of arguments
+if ($argc !== 3) {
+    echo "Usage: php create_user.php <username> <password>\n";
+    exit(1);
+}
+
+$username = $argv[1];
+$plaintext = $argv[2];
+
+// Connect to the database
 $path = '/var/www/html/data/user_credentials.db';
 $db = new PDO("sqlite:$path");
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -16,12 +26,11 @@ $db->exec("CREATE TABLE IF NOT EXISTS users (
     password TEXT NOT NULL
 )");
 
-// Insert default test user with hashed password
-$username = 'user';
-$plaintext = 'defaultpassword';
+// Hash the password
 $hashed = password_hash($plaintext, PASSWORD_DEFAULT);
 
+// Insert user
 $stmt = $db->prepare("INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)");
 $stmt->execute([$username, $hashed]);
 
-echo "User created or already exists.\n";
+echo "User '{$username}' created or already exists.\n";

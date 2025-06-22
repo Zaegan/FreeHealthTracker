@@ -1,70 +1,94 @@
 <?php
 session_start();
-
-// Require user to be logged in
-if (!isset($_SESSION['username'])) {
+$username = $_SESSION['username'] ?? null;
+if (!$username) {
     http_response_code(403);
-    echo "User not authenticated";
-    exit();
+    exit("Unauthorized");
 }
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo "Method not allowed";
-    exit();
-}
+$config_db = new PDO("sqlite:/var/www/html/data/config.db");
+$config_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-if (empty($_POST['exercise']) || empty($_POST['muscle_group'])) {
-    http_response_code(400);
-    echo "Missing parameters";
-    exit();
-}
+$workout_db = new PDO("sqlite:/var/www/html/data/{$username}_workout_log.db");
+$workout_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$exercise = $_POST['exercise'];
-$muscle_group = $_POST['muscle_group'];
-$username = preg_replace('/[^a-zA-Z0-9_-]/', '', $_SESSION['username']); // Sanitize username
-$db_path = "/var/www/html/data/{$username}_workout_log.db";
+// When loading the page, return a suggested exercise per group
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && $_GET['mode'] === 'initial') {
+    $results = [];
 
-try {
-    $db = new PDO("sqlite:$db_path");
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-    // Ensure the workouts table exists
-    $db->exec("
-        CREATE TABLE IF NOT EXISTS workouts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT NOT NULL,
-            muscle_group TEXT NOT NULL,
-            exercise TEXT NOT NULL,
-            weight REAL NOT NULL,
-            reps1 INTEGER,
-            reps2 INTEGER,
-            reps3 INTEGER
-        )
+    // Get recent exercises (last 6 days excluding today)
+    $cutoff = (new DateTime('6 days ago'))->format('Y-m-d');
+    $today = (new DateTime())->format('Y-m-d');
+    $recent_stmt = $workout_db->prepare("
+        SELECT DISTINCT exercise FROM workouts
+        WHERE date >= ? AND date < ? AND user = ?
     ");
+    $recent_stmt->execute([$cutoff, $today, $username]);
+    $recent_exercises = $recent_stmt->fetchAll(PDO::FETCH_COLUMN);
 
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    // Load muscle groups and exercises
+    $groups = $config_db->query("SELECT id, name, category FROM muscle_groups ORDER BY category, display_order, name")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($groups as $group) {
+        $key = strtolower(str_replace([' ', '-'], '_', $group['category'] . ' - ' . $group['name']));
 
-    $stmt = $db->prepare("SELECT weight, reps1, reps2, reps3 FROM workouts WHERE muscle_group = ? AND exercise = ? ORDER BY id DESC LIMIT 3");
-    $stmt->execute([$muscle_group, $exercise]);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Find exercises for this group
+        $stmt = $config_db->prepare("SELECT name FROM exercises WHERE group_id = ? AND subgroup_id IS NULL ORDER BY name");
+        $stmt->execute([$group['id']]);
+        $all_exercises = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-    if (count($rows) === 0) {
-        echo "No history for $exercise";
-        exit();
+        // Exclude recently used exercises
+        $candidates = array_diff($all_exercises, $recent_exercises);
+        $exercise = $candidates ? $candidates[array_rand($candidates)] : null;
+
+        // Get last weight used for this group+exercise
+        $weight = null;
+        if ($exercise) {
+            $wstmt = $workout_db->prepare("SELECT weight FROM workouts WHERE exercise = ? AND muscle_group = ? ORDER BY date DESC LIMIT 1");
+            $group_label = $group['category'] . ' - ' . $group['name'];
+            $wstmt->execute([$exercise, $group_label]);
+            $weight = $wstmt->fetchColumn();
+        }
+
+        $results[$key] = [
+            'exercise' => $exercise,
+            'weight' => $weight,
+        ];
     }
 
-    $latest_weight = $rows[0]['weight'];
-    $max_reps = max(array_merge(
-        array_column($rows, 'reps1'),
-        array_column($rows, 'reps2'),
-        array_column($rows, 'reps3')
-    ));
-
-    echo "Last used $latest_weight lbs for up to $max_reps reps";
-
-} catch (Exception $e) {
-    http_response_code(500);
-    echo "Error: " . $e->getMessage();
+    header('Content-Type: application/json');
+    echo json_encode($results);
+    exit;
 }
-?>
+
+// Default response for POST (dropdown selection)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json');
+
+    $exercise = $_POST['exercise'] ?? '';
+    $group = $_POST['muscle_group'] ?? '';
+
+    if ($exercise && $group) {
+        $stmt = $workout_db->prepare("SELECT weight, reps1, reps2, reps3 FROM workouts WHERE exercise = ? AND muscle_group = ? ORDER BY date DESC LIMIT 1");
+        $stmt->execute([$exercise, $group]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            echo json_encode([
+                'text' => "Last: {$row['weight']} lbs, Reps: {$row['reps1']}, {$row['reps2']}, {$row['reps3']}",
+                'weight' => $row['weight']
+            ]);
+        } else {
+            echo json_encode([
+                'text' => "No history found for this exercise.",
+                'weight' => null
+            ]);
+        }
+    } else {
+        echo json_encode([
+            'text' => "Invalid input.",
+            'weight' => null
+        ]);
+    }
+
+    exit;
+}

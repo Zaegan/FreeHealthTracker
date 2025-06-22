@@ -1,4 +1,7 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 session_start();
 
 // --- LOGIN SYSTEM WITH HASHED CREDENTIALS ---
@@ -51,6 +54,7 @@ if (!isset($_SESSION['logged_in'])) {
             <input type="password" name="password" placeholder="Password" required>
             <input type="submit" value="Login">
         </form>
+        <p><a href="join.php">Create Account</a></p>
     </body>
     </html>
     <?php
@@ -78,25 +82,18 @@ $db->exec("CREATE TABLE IF NOT EXISTS workouts (
     reps3 INTEGER
 )");
 
-// Define exercise categories
-$workout_exercises = [
-    'Compound' => [
-        'Chest' => ['Bench Press', 'Incline Dumbbell Bench Press', 'Flat Dumbbell Bench Press', 'Pushups', 'Pec Dips', 'Pec Fly Machine'],
-        'Quads' => ['Back Squat', 'Goblet Squat', 'Walking Lunges', 'Deadlift'],
-        'Lats' => [
-            'Vertical' => ['Lat Pulldown', 'Assisted Pullup'],
-            'Horizontal' => ['Cable rows', 'Single arm Dumbbell rows', 'Australian Pushups', 'Dumbbell Rows']
-        ],
-        'Shoulders' => ['Dumbbell Overhead Press', 'Machine Overhead Press']
-    ],
-    'Isolation' => [
-        'Biceps' => ['Barbell Preacher Curl', 'Dumbbell Preacher curl', 'Dumbbell curls', 'Cable Curls', 'Hammer curls', 'Barbell 21 Curls'],
-        'Triceps' => ['Skull Crusher', 'Bench Dips', 'Cable pushdowns', 'Cable overheads'],
-        'Shoulders' => ['Dumbbell Shrugs', 'Lateral Raises', "Farmer's Carries", 'Cable Lateral Raises'],
-        'Hamstrings' => ['Single Leg Glute Bridge', 'Single Leg Bench Hip Thrust', 'Weighted Bench Hip Thrust', 'Slider Hamstring Curl', 'Single Leg Romanian Deadlift', 'Machine Hamstring Curl', 'Romanian Deadlift'],
-        'Core' => ['Hanging Leg Raises', 'Cable Crunches', 'Forearm Plank']
-    ]
-];
+// Load workout exercise definitions from config.db
+$config_db = new PDO("sqlite:/var/www/html/data/config.db");
+$config_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+$workout_exercises = [];
+$group_stmt = $config_db->query("SELECT id, name, category FROM muscle_groups ORDER BY category, display_order, name");
+while ($group = $group_stmt->fetch(PDO::FETCH_ASSOC)) {
+    $key = $group['category'] . ' - ' . $group['name'];
+    $ex_stmt = $config_db->prepare("SELECT name FROM exercises WHERE group_id = ? AND subgroup_id IS NULL ORDER BY name");
+    $ex_stmt->execute([$group['id']]);
+    $workout_exercises[$key] = $ex_stmt->fetchAll(PDO::FETCH_COLUMN);
+}
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_weight'])) {
@@ -117,34 +114,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_weight'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
     $date = date('Y-m-d');
     $user = $_SESSION['username'];
-    foreach ($workout_exercises as $category) {
-        foreach ($category as $group => $exercises) {
-            if ($group === 'Lats' && is_array($exercises) && isset($exercises['Vertical'])) {
-                foreach ($exercises as $subtype => $list) {
-                    $label = "{$group}_{$subtype}";
-                    $exercise = $_POST[$label.'_exercise'] ?? '';
-                    $weight = intval($_POST[$label.'_weight'] ?? 0);
-                    $reps1 = intval($_POST[$label.'_reps1'] ?? 0);
-                    $reps2 = intval($_POST[$label.'_reps2'] ?? 0);
-                    $reps3 = intval($_POST[$label.'_reps3'] ?? 0);
-                    if ($exercise) {
-                        $stmt = $db->prepare("INSERT INTO workouts (date, user, muscle_group, exercise, weight, reps1, reps2, reps3)
-                                              VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                        $stmt->execute([$date, $user, "$group-$subtype", $exercise, $weight, $reps1, $reps2, $reps3]);
-                    }
-                }
-            } else {
-                $exercise = $_POST[$group.'_exercise'] ?? '';
-                $weight = intval($_POST[$group.'_weight'] ?? 0);
-                $reps1 = intval($_POST[$group.'_reps1'] ?? 0);
-                $reps2 = intval($_POST[$group.'_reps2'] ?? 0);
-                $reps3 = intval($_POST[$group.'_reps3'] ?? 0);
-                if ($exercise) {
-                    $stmt = $db->prepare("INSERT INTO workouts (date, user, muscle_group, exercise, weight, reps1, reps2, reps3)
-                                          VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([$date, $user, $group, $exercise, $weight, $reps1, $reps2, $reps3]);
-                }
-            }
+    foreach ($workout_exercises as $group => $exercises) {
+        $safe_key = strtolower(str_replace([' ', '-'], '_', $group));
+        $exercise = $_POST["{$safe_key}_exercise"] ?? null;
+        $weight = $_POST["{$safe_key}_weight"] ?? null;
+        $reps1 = $_POST["{$safe_key}_reps1"] ?? null;
+        $reps2 = $_POST["{$safe_key}_reps2"] ?? null;
+        $reps3 = $_POST["{$safe_key}_reps3"] ?? null;
+
+        if ($exercise) {
+            $stmt = $db->prepare("INSERT INTO workouts (date, user, muscle_group, exercise, weight, reps1, reps2, reps3) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$date, $user, $group, $exercise, $weight, $reps1, $reps2, $reps3]);
         }
     }
     echo "<p>Workout saved!</p>";
@@ -165,34 +145,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
         input[type=text], input[type=number], select { width: 100%; padding: 5px; }
         .suggestion { font-style: italic; color: #555; margin-top: 5px; }
     </style>
-    <script>
-    function fetchSuggestion(selectElement, muscleGroup) {
-        const exercise = selectElement.value;
-        const suggestionBox = selectElement.closest('.muscle-group').querySelector('.suggestion');
-        if (!exercise) {
-            suggestionBox.textContent = '';
-            return;
-        }
 
-        const formData = new FormData();
-        formData.append('exercise', exercise);
-        formData.append('muscle_group', muscleGroup);
-
-        fetch('suggest.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.text())
-        .then(text => suggestionBox.textContent = text)
-        .catch(() => suggestionBox.textContent = 'Error retrieving suggestion');
-    }
-    </script>
 </head>
 <body>
     <div style="text-align: right;"><a href="?logout=1">Logout</a></div>
     <h1>Workout for <?= date('Y-m-d') ?></h1>
 
-  
 <!-- Quick Weight Entry (only after login) -->
 <form method="post" style="max-width: 600px; margin: auto; text-align: center; margin-bottom: 20px;">
     <label for="bodyweight">Today's Body Weight (lbs):</label>
@@ -202,42 +160,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
 <p style='text-align:center;'><a href="weight_log.php">View Weight History</a></p>
     <form method="post">
         <?php
-        foreach ($workout_exercises as $category => $muscles) {
-            echo "<h2>$category</h2>";
-            foreach ($muscles as $group => $options) {
-                if ($group === 'Lats' && is_array($options) && isset($options['Vertical'])) {
-                    foreach ($options as $sub => $list) {
-                        $label = "{$group}_{$sub}";
-                        $muscleKey = "$group-$sub";
-                        echo "<div class='muscle-group'>";
-                        echo "<h3>$group ($sub)</h3>";
-                        echo "<label>Exercise: <select name='{$label}_exercise' onchange=\"fetchSuggestion(this, '$muscleKey')\">";
-                        echo "<option value=''>-- Select --</option>";
-                        foreach ($list as $exercise) echo "<option>$exercise</option>";
-                        echo "</select></label>";
-                        echo "<p class='suggestion'></p>";
-                        echo "<label>Weight (lbs): <input type='number' name='{$label}_weight'></label>";
-                        echo "<label>Set 1 Reps: <input type='number' name='{$label}_reps1'></label>";
-                        echo "<label>Set 2 Reps: <input type='number' name='{$label}_reps2'></label>";
-                        echo "<label>Set 3 Reps: <input type='number' name='{$label}_reps3'></label>";
-                        echo "</div>";
-                    }
-                } else {
-                    $muscleKey = $group;
-                    echo "<div class='muscle-group'>";
-                    echo "<h3>$group</h3>";
-                    echo "<label>Exercise: <select name='{$group}_exercise' onchange=\"fetchSuggestion(this, '$muscleKey')\">";
-                    echo "<option value=''>-- Select --</option>";
-                    foreach ($options as $exercise) echo "<option>$exercise</option>";
-                    echo "</select></label>";
-                    echo "<p class='suggestion'></p>";
-                    echo "<label>Weight (lbs): <input type='number' name='{$group}_weight'></label>";
-                    echo "<label>Set 1 Reps: <input type='number' name='{$group}_reps1'></label>";
-                    echo "<label>Set 2 Reps: <input type='number' name='{$group}_reps2'></label>";
-                    echo "<label>Set 3 Reps: <input type='number' name='{$group}_reps3'></label>";
-                    echo "</div>";
-                }
-            }
+        foreach ($workout_exercises as $group => $exercises) {
+            $safe_key = strtolower(str_replace([' ', '-'], '_', $group));
+            echo "<div class='muscle-group'>";
+            echo "<h3>$group</h3>";
+            $actual_group = explode(' - ', $group)[1]; // isolates "chest"
+            echo "<label>Exercise: <select name='{$safe_key}_exercise' onchange=\"fetchSuggestion(this, '$actual_group')\">";
+            echo "<option value=''>-- Select --</option>";
+            foreach ($exercises as $exercise) echo "<option>$exercise</option>";
+            echo "</select></label>";
+            echo "<p class='suggestion'></p>";
+            echo "<label>Weight (lbs): <input type='number' name='{$safe_key}_weight'></label>";
+            echo "<label>Set 1 Reps: <input type='number' name='{$safe_key}_reps1'></label>";
+            echo "<label>Set 2 Reps: <input type='number' name='{$safe_key}_reps2'></label>";
+            echo "<label>Set 3 Reps: <input type='number' name='{$safe_key}_reps3'></label>";
+            echo "</div>";
         }
         ?>
         <input type="submit" name="save" value="Save Workout">
@@ -272,3 +209,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['view_log'])) {
 </body>
 </html>
 
+<script>
+
+
+function fetchSuggestion(selectElement, muscleGroup) {
+    const exercise = selectElement.value;
+    const groupDiv = selectElement.closest('.muscle-group');
+    const suggestionBox = groupDiv.querySelector('.suggestion');
+    const weightInput = groupDiv.querySelector('input[type=number][name$="_weight"]');
+
+    if (!exercise) {
+        suggestionBox.textContent = '';
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('exercise', exercise);
+    formData.append('muscle_group', muscleGroup);
+
+    fetch('suggest.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        suggestionBox.textContent = data.text || '';
+        if (weightInput && data.weight !== null && data.weight !== undefined) {
+            weightInput.value = data.weight;
+        }
+    })
+    .catch(() => {
+        suggestionBox.textContent = 'Error retrieving suggestion';
+    });
+}
+function prepopulateFields() {
+    fetch("suggest.php?mode=initial")
+        .then(res => res.json())
+        .then(data => {
+            for (const [group, suggestion] of Object.entries(data)) {
+                const select = document.querySelector(`select[name="${group}_exercise"]`);
+                const input = document.querySelector(`input[name="${group}_weight"]`);
+
+                if (select && suggestion.exercise) {
+                    for (const opt of select.options) {
+                        if (opt.value === suggestion.exercise) {
+                            opt.selected = true;
+                            break;
+                        }
+                    }
+
+                    // Also trigger POST suggestion to display guidance
+                    const labelText = select.closest('.muscle-group').querySelector('h3')?.textContent;
+                    const actualGroup = labelText?.split(' - ')[1] ?? '';
+                    fetchSuggestion(select, actualGroup);
+
+                }
+
+                if (input && suggestion.weight !== null) {
+                    input.value = suggestion.weight;
+                }
+            }
+        })
+        .catch(err => {
+            console.error("Error fetching suggestions:", err);
+        });
+}
+
+
+
+function waitForFieldsThenPopulate() {
+    const ready = document.querySelector('select[name$="_exercise"]') && document.querySelector('input[name$="_weight"]');
+    if (ready) {
+        prepopulateFields();
+    } else {
+        setTimeout(waitForFieldsThenPopulate, 100);
+    }
+}
+
+document.addEventListener("DOMContentLoaded", waitForFieldsThenPopulate);
+</script>
