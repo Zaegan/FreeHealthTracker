@@ -1,5 +1,5 @@
 /data/*
-!/data/.keep        # Leave a placeholder if needed
+!/data/placeholder.txt        # Leave placeholder to keep directory tracked
 *.db
 *.sqlite
 *.log
