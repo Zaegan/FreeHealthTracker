@@ -92,7 +92,7 @@ $workout_exercises = [
     'Isolation' => [
         'Biceps' => ['Barbell Preacher Curl', 'Dumbbell Preacher curl', 'Dumbbell curls', 'Cable Curls', 'Hammer curls', 'Barbell 21 Curls'],
         'Triceps' => ['Skull Crusher', 'Bench Dips', 'Cable pushdowns', 'Cable overheads'],
-        'Shoulders' => ['Dumbbell Shrugs', 'Lateral Raises', 'Farmers Carries', 'Cable Lateral Raises'],
+        'Shoulders' => ['Dumbbell Shrugs', 'Lateral Raises', "Farmer's Carries", 'Cable Lateral Raises'],
         'Hamstrings' => ['Single Leg Glute Bridge', 'Single Leg Bench Hip Thrust', 'Weighted Bench Hip Thrust', 'Slider Hamstring Curl', 'Single Leg Romanian Deadlift', 'Machine Hamstring Curl', 'Romanian Deadlift'],
         'Core' => ['Hanging Leg Raises', 'Cable Crunches', 'Forearm Plank']
     ]
