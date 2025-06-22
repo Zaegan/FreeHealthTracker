@@ -168,8 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
             echo "<div class='muscle-group'>";
             $escaped_group = htmlspecialchars($group, ENT_QUOTES);
             echo "<h3>{$escaped_group}</h3>";
-            $actual_group = explode(' - ', $group)[1]; // isolates "chest"
-            $onchange = "fetchSuggestion(this, " . json_encode($actual_group) . ")";
+            $onchange = "fetchSuggestion(this, " . json_encode($group) . ")";
             echo "<label>Exercise: <select name='{$safe_key}_exercise' onchange=\"" . htmlspecialchars($onchange, ENT_QUOTES) . "\">";
             echo "<option value=''>-- Select --</option>";
             foreach ($exercises as $exercise) echo "<option>" . htmlspecialchars($exercise, ENT_QUOTES) . "</option>";
@@ -264,9 +263,8 @@ function prepopulateFields() {
                     }
 
                     // Also trigger POST suggestion to display guidance
-                    const labelText = select.closest('.muscle-group').querySelector('h3')?.textContent;
-                    const actualGroup = labelText?.split(' - ')[1] ?? '';
-                    fetchSuggestion(select, actualGroup);
+                    const fullGroup = select.closest('.muscle-group').querySelector('h3')?.textContent ?? '';
+                    fetchSuggestion(select, fullGroup);
 
                 }
 
