@@ -64,7 +64,9 @@ if (!isset($_SESSION['logged_in'])) {
 // --- END LOGIN HANDLING ---
 
 // Connect to user-specific workout DB
-$username = $_SESSION['username'];
+$raw_username = $_SESSION['username'];
+// Sanitize username for filesystem usage
+$username = preg_replace('/[^a-zA-Z0-9_-]/', '', $raw_username);
 $workout_db_path = "/var/www/html/data/{$username}_workout_log.db";
 $db = new PDO("sqlite:" . $workout_db_path);
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
