@@ -169,9 +169,9 @@ if (empty($storedStartDate)) {
     <form method="post">
         <div class="form-pair">
             <label for="startDate">Start Date: </label>
-            <input type="date" id="startDate" name="startDate" value="<?php echo htmlspecialchars($startDate); ?>">
+            <input type="date" id="startDate" name="startDate" value="<?php echo htmlspecialchars($startDate, ENT_QUOTES, 'UTF-8'); ?>">
             <label for="endDate">End Date: </label>
-            <input type="date" id="endDate" name="endDate" value="<?php echo htmlspecialchars($endDate); ?>">
+            <input type="date" id="endDate" name="endDate" value="<?php echo htmlspecialchars($endDate, ENT_QUOTES, 'UTF-8'); ?>">
         </div>
         <button type="submit">Update Graph</button>
     </form>
@@ -179,12 +179,12 @@ if (empty($storedStartDate)) {
     <form method="post">
         <h3>Set Goal Trajectory</h3>
         <div class="form-pair">
-            <label>Start Date: <input type="date" name="goalStartDate" value="<?php echo htmlspecialchars($goalStartDate); ?>"></label>
-            <label>Start Weight: <input type="number" name="goalStartWeight" step="0.1" value="<?php echo htmlspecialchars($goalStartWeight); ?>"></label>
+            <label>Start Date: <input type="date" name="goalStartDate" value="<?php echo htmlspecialchars($goalStartDate, ENT_QUOTES, 'UTF-8'); ?>"></label>
+            <label>Start Weight: <input type="number" name="goalStartWeight" step="0.1" value="<?php echo htmlspecialchars($goalStartWeight, ENT_QUOTES, 'UTF-8'); ?>"></label>
         </div>
         <div class="form-pair">
-            <label>End Date: <input type="date" name="goalEndDate" value="<?php echo htmlspecialchars($goalEndDate); ?>"></label>
-            <label>End Weight: <input type="number" name="goalEndWeight" step="0.1" value="<?php echo htmlspecialchars($goalEndWeight); ?>"></label>
+            <label>End Date: <input type="date" name="goalEndDate" value="<?php echo htmlspecialchars($goalEndDate, ENT_QUOTES, 'UTF-8'); ?>"></label>
+            <label>End Weight: <input type="number" name="goalEndWeight" step="0.1" value="<?php echo htmlspecialchars($goalEndWeight, ENT_QUOTES, 'UTF-8'); ?>"></label>
         </div>
         <button type="submit">Save Goal</button>
     </form>
@@ -200,7 +200,9 @@ if (empty($storedStartDate)) {
         $dates = [];
         $weights = [];
         foreach ($entries as $row) {
-            echo "<tr><td>{$row['date']}</td><td>{$row['weight']}</td></tr>";
+            $date = htmlspecialchars($row['date'], ENT_QUOTES, 'UTF-8');
+            $weight = htmlspecialchars($row['weight'], ENT_QUOTES, 'UTF-8');
+            echo "<tr><td>{$date}</td><td>{$weight}</td></tr>";
             $dates[] = $row['date'];
             $weights[] = $row['weight'];
         }
