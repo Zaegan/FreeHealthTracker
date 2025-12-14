@@ -5,3 +5,14 @@
 *.log
 .env
 index_backup.php
+
+# --- Full-site backups ---
+/backups/
+/backup/
+/site_backup/
+/*.tar
+/*.tar.gz
+/*.tgz
+/*.zip
+/*.img
+/*.img.gz
