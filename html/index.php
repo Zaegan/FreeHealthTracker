@@ -71,6 +71,7 @@ $username = preg_replace('/[^a-zA-Z0-9_-]/', '', $raw_username);
 $workout_db_path = "$data_dir/{$username}_workout_log.db";
 $db = new PDO("sqlite:" . $workout_db_path);
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$workout_saved = false;
 
 // Initialize workout table
 $db->exec("CREATE TABLE IF NOT EXISTS workouts (
@@ -132,6 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
             $stmt->execute([$date, $user, $group, $exercise, $weight, $reps1, $reps2, $reps3]);
         }
     }
+    $workout_saved = true;
     echo "<p>Workout saved!</p>";
 }
 ?>
@@ -163,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
     <input type="submit" name="save_weight" value="Log Weight">
 </form>
 <p style='text-align:center;'><a href="weight_log.php">View Weight History</a></p>
-    <form method="post">
+    <form method="post" id="workout-form" data-storage-key="<?= htmlspecialchars($username, ENT_QUOTES); ?>">
         <?php
         foreach ($workout_exercises as $group => $exercises) {
             $safe_key = strtolower(str_replace([' ', '-'], '_', $group));
@@ -227,7 +229,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['view_log'])) {
 </html>
 
 <script>
-
+const workoutForm = document.getElementById('workout-form');
+const workoutStorageKey = workoutForm ? `workoutFormState_${workoutForm.dataset.storageKey || 'default'}` : 'workoutFormState_default';
 
 function fetchSuggestion(selectElement, muscleGroup) {
     const exercise = selectElement.value;
@@ -251,7 +254,7 @@ function fetchSuggestion(selectElement, muscleGroup) {
     .then(response => response.json())
     .then(data => {
         suggestionBox.textContent = data.text || '';
-        if (weightInput && data.weight !== null && data.weight !== undefined) {
+        if (weightInput && !weightInput.value && data.weight !== null && data.weight !== undefined) {
             weightInput.value = data.weight;
         }
     })
@@ -259,6 +262,60 @@ function fetchSuggestion(selectElement, muscleGroup) {
         suggestionBox.textContent = 'Error retrieving suggestion';
     });
 }
+
+function saveWorkoutDraft() {
+    if (!workoutForm) return;
+
+    const payload = {};
+    Array.from(workoutForm.elements).forEach(field => {
+        if (!field.name) return;
+        if ((field.type === 'checkbox' || field.type === 'radio')) {
+            payload[field.name] = field.checked;
+        } else {
+            payload[field.name] = field.value;
+        }
+    });
+
+    try {
+        localStorage.setItem(workoutStorageKey, JSON.stringify(payload));
+    } catch (err) {
+        console.error('Unable to save workout draft', err);
+    }
+}
+
+function restoreWorkoutDraft() {
+    if (!workoutForm) return;
+
+    const stored = localStorage.getItem(workoutStorageKey);
+    if (!stored) return;
+
+    try {
+        const payload = JSON.parse(stored);
+        Object.entries(payload).forEach(([name, value]) => {
+            const field = workoutForm.elements.namedItem(name);
+            if (!field) return;
+
+            if (field instanceof RadioNodeList) {
+                field.value = value;
+            } else if (field.type === 'checkbox' || field.type === 'radio') {
+                field.checked = Boolean(value);
+            } else {
+                field.value = value;
+            }
+        });
+    } catch (err) {
+        console.error('Unable to restore workout draft', err);
+    }
+}
+
+function applySuggestionsForCurrentSelections() {
+    document.querySelectorAll('#workout-form select[name$="_exercise"]').forEach(select => {
+        if (!select.value) return;
+        const fullGroup = select.closest('.muscle-group').querySelector('h3')?.textContent ?? '';
+        fetchSuggestion(select, fullGroup);
+    });
+}
+
 function prepopulateFields() {
     fetch("suggest.php?mode=initial")
         .then(res => res.json())
@@ -267,7 +324,7 @@ function prepopulateFields() {
                 const select = document.querySelector(`select[name="${group}_exercise"]`);
                 const input = document.querySelector(`input[name="${group}_weight"]`);
 
-                if (select && suggestion.exercise) {
+                if (select && suggestion.exercise && !select.value) {
                     for (const opt of select.options) {
                         if (opt.value === suggestion.exercise) {
                             opt.selected = true;
@@ -275,13 +332,12 @@ function prepopulateFields() {
                         }
                     }
 
-                    // Also trigger POST suggestion to display guidance
                     const fullGroup = select.closest('.muscle-group').querySelector('h3')?.textContent ?? '';
                     fetchSuggestion(select, fullGroup);
 
                 }
 
-                if (input && suggestion.weight !== null) {
+                if (input && !input.value && suggestion.weight !== null) {
                     input.value = suggestion.weight;
                 }
             }
@@ -291,16 +347,35 @@ function prepopulateFields() {
         });
 }
 
+function initWorkoutPersistence() {
+    restoreWorkoutDraft();
+    prepopulateFields();
+    applySuggestionsForCurrentSelections();
 
+    if (workoutForm) {
+        workoutForm.addEventListener('input', saveWorkoutDraft);
+        workoutForm.addEventListener('change', saveWorkoutDraft);
+        window.addEventListener('beforeunload', saveWorkoutDraft);
+    }
+}
 
 function waitForFieldsThenPopulate() {
     const ready = document.querySelector('select[name$="_exercise"]') && document.querySelector('input[name$="_weight"]');
     if (ready) {
-        prepopulateFields();
+        initWorkoutPersistence();
     } else {
         setTimeout(waitForFieldsThenPopulate, 100);
     }
 }
 
 document.addEventListener("DOMContentLoaded", waitForFieldsThenPopulate);
+<?php if ($workout_saved): ?>
+if (typeof localStorage !== 'undefined') {
+    try {
+        localStorage.removeItem('workoutFormState_<?= htmlspecialchars($username, ENT_QUOTES); ?>');
+    } catch (err) {
+        console.error('Unable to clear saved workout draft', err);
+    }
+}
+<?php endif; ?>
 </script>
