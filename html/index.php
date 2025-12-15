@@ -111,7 +111,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_weight'])) {
     $today = date('Y-m-d');
     $stmt = $weight_db->prepare("INSERT INTO weights (date, weight) VALUES (?, ?)");
     $stmt->execute([$today, $weight]);
-    echo "<p style='text-align:center;'>Weight recorded: {$weight} lbs</p>";
+    $escaped_weight = htmlspecialchars($weight, ENT_QUOTES);
+    echo "<p style='text-align:center;'>Weight recorded: {$escaped_weight} lbs</p>";
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
@@ -172,7 +173,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
             echo "<h3>{$escaped_group}</h3>";
             echo "<label>Exercise: <select name='{$safe_key}_exercise' onchange=\"fetchSuggestion(this, {$group_js})\">";
             echo "<option value=''>-- Select --</option>";
-            foreach ($exercises as $exercise) echo "<option>$exercise</option>";
+            foreach ($exercises as $exercise) {
+                $escaped_exercise = htmlspecialchars($exercise, ENT_QUOTES);
+                echo "<option value='{$escaped_exercise}'>{$escaped_exercise}</option>";
+            }
             echo "</select></label>";
             echo "<p class='suggestion'></p>";
             echo "<label>Weight (lbs): <input type='number' name='{$safe_key}_weight'></label>";
@@ -200,11 +204,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['view_log'])) {
     } else {
         foreach ($entries as $row) {
             echo "<div style='border:1px solid #ccc; padding:10px; margin:5px 0; border-radius:6px;'>";
-            echo "<strong>Date:</strong> {$row['date']}<br>";
-            echo "<strong>Muscle Group:</strong> " . htmlspecialchars($row['muscle_group'], ENT_QUOTES) . "<br>";
-            echo "<strong>Exercise:</strong> {$row['exercise']}<br>";
-            echo "<strong>Weight:</strong> {$row['weight']} lbs<br>";
-            echo "<strong>Reps:</strong> {$row['reps1']}, {$row['reps2']}, {$row['reps3']}";
+            $escaped_date = htmlspecialchars($row['date'], ENT_QUOTES);
+            $escaped_muscle_group = htmlspecialchars($row['muscle_group'], ENT_QUOTES);
+            $escaped_exercise = htmlspecialchars($row['exercise'], ENT_QUOTES);
+            $escaped_weight = htmlspecialchars($row['weight'], ENT_QUOTES);
+            $escaped_reps1 = htmlspecialchars($row['reps1'], ENT_QUOTES);
+            $escaped_reps2 = htmlspecialchars($row['reps2'], ENT_QUOTES);
+            $escaped_reps3 = htmlspecialchars($row['reps3'], ENT_QUOTES);
+
+            echo "<strong>Date:</strong> {$escaped_date}<br>";
+            echo "<strong>Muscle Group:</strong> {$escaped_muscle_group}<br>";
+            echo "<strong>Exercise:</strong> {$escaped_exercise}<br>";
+            echo "<strong>Weight:</strong> {$escaped_weight} lbs<br>";
+            echo "<strong>Reps:</strong> {$escaped_reps1}, {$escaped_reps2}, {$escaped_reps3}";
             echo "</div>";
         }
     }
