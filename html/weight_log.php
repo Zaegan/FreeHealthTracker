@@ -15,16 +15,33 @@ $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $db->exec("CREATE TABLE IF NOT EXISTS weights (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, weight REAL)");
 $db->exec("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)");
 
+function sanitizeDate(?string $value): ?string {
+    if ($value === null) {
+        return null;
+    }
+
+    $date = DateTime::createFromFormat('Y-m-d', $value);
+    return $date ? $date->format('Y-m-d') : null;
+}
+
+function sanitizeFloat($value): ?float {
+    $filtered = filter_var($value, FILTER_VALIDATE_FLOAT);
+    return $filtered !== false ? (float)$filtered : null;
+}
+
 // Handle CSV import
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
     if (is_uploaded_file($_FILES['csv_file']['tmp_name'])) {
         $handle = fopen($_FILES['csv_file']['tmp_name'], 'r');
         fgetcsv($handle); // Skip header
         while (($data = fgetcsv($handle)) !== false) {
-            $date = date('Y-m-d', strtotime($data[0]));
-            $weight = floatval($data[1]);
-            $stmt = $db->prepare("INSERT INTO weights (date, weight) VALUES (?, ?)");
-            $stmt->execute([$date, $weight]);
+            $date = sanitizeDate($data[0] ?? null);
+            $weight = sanitizeFloat($data[1] ?? null);
+
+            if ($date && $weight !== null) {
+                $stmt = $db->prepare("INSERT INTO weights (date, weight) VALUES (?, ?)");
+                $stmt->execute([$date, $weight]);
+            }
         }
         fclose($handle);
     }
@@ -61,15 +78,38 @@ function saveSetting($key, $value) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['startDate'], $_POST['endDate'])) {
-        saveSetting('startDate', $_POST['startDate']);
-        saveSetting('endDate', $_POST['endDate']);
+        $startDateInput = sanitizeDate($_POST['startDate']);
+        $endDateInput = sanitizeDate($_POST['endDate']);
+
+        if ($startDateInput !== null) {
+            saveSetting('startDate', $startDateInput);
+        }
+
+        if ($endDateInput !== null) {
+            saveSetting('endDate', $endDateInput);
+        }
     }
+
     if (isset($_POST['goalStartDate'], $_POST['goalStartWeight'], $_POST['goalEndDate'], $_POST['goalEndWeight'])) {
-        saveSetting('goalStartDate', $_POST['goalStartDate']);
-        saveSetting('goalStartWeight', $_POST['goalStartWeight']);
-        saveSetting('goalEndDate', $_POST['goalEndDate']);
-        saveSetting('goalEndWeight', $_POST['goalEndWeight']);
+        $goalStartDateInput = sanitizeDate($_POST['goalStartDate']);
+        $goalStartWeightInput = sanitizeFloat($_POST['goalStartWeight']);
+        $goalEndDateInput = sanitizeDate($_POST['goalEndDate']);
+        $goalEndWeightInput = sanitizeFloat($_POST['goalEndWeight']);
+
+        if ($goalStartDateInput !== null) {
+            saveSetting('goalStartDate', $goalStartDateInput);
+        }
+        if ($goalStartWeightInput !== null) {
+            saveSetting('goalStartWeight', $goalStartWeightInput);
+        }
+        if ($goalEndDateInput !== null) {
+            saveSetting('goalEndDate', $goalEndDateInput);
+        }
+        if ($goalEndWeightInput !== null) {
+            saveSetting('goalEndWeight', $goalEndWeightInput);
+        }
     }
+
     header("Location: weight_log.php");
     exit();
 }
@@ -200,7 +240,9 @@ if (empty($storedStartDate)) {
         $dates = [];
         $weights = [];
         foreach ($entries as $row) {
-            echo "<tr><td>{$row['date']}</td><td>{$row['weight']}</td></tr>";
+            $safeDate = htmlspecialchars($row['date'], ENT_QUOTES, 'UTF-8');
+            $safeWeight = htmlspecialchars($row['weight'], ENT_QUOTES, 'UTF-8');
+            echo "<tr><td>{$safeDate}</td><td>{$safeWeight}</td></tr>";
             $dates[] = $row['date'];
             $weights[] = $row['weight'];
         }
